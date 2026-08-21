@@ -1,0 +1,69 @@
+name: Update all galleries
+
+on:
+  push:
+    paths:
+      - 'gallery/'
+      - 'apartments/'
+      - '!gallery/README.txt'
+      - '!apartments/**/README.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-galleries:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate gallery lists
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          allowed = {".jpg", ".jpeg", ".png", ".webp", ".svg"}
+
+          def write_list(folder):
+              folder = Path(folder)
+              if not folder.exists():
+                  return
+
+              files = sorted(
+                  p.name
+                  for p in folder.iterdir()
+                  if p.is_file() and p.suffix.lower() in allowed
+              )
+
+              (folder / "gallery.json").write_text(
+                  json.dumps(files, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8"
+              )
+
+          write_list("gallery")
+
+          apartments = Path("apartments")
+          if apartments.exists():
+              for folder in apartments.iterdir():
+                  if folder.is_dir():
+                      write_list(folder)
+          PY
+
+      - name: Commit updated gallery lists
+        run: |
+          if git diff --quiet -- gallery.json apartments; then
+            echo "No gallery changes to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add gallery.json apartments/*/gallery.json
+          git commit -m "Update galleries automatically"
+          git push
