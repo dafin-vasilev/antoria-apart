@@ -221,9 +221,7 @@ async function loadGallery(){
       image.src=`obzor/${file}`;
       image.alt=title;
       image.loading=index<4?"eager":"lazy";
-      const caption=document.createElement("span");
-      caption.textContent=title;
-      button.append(image,caption);
+      button.append(image);
       button.addEventListener("click",()=>openLightbox(galleryItems,index));
       grid.appendChild(button);
     });
